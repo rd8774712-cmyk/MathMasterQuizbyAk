@@ -1,26 +1,33 @@
-import type { Express } from "express";
-import type { Server } from "http";
-import { storage } from "./storage";
-import { api } from "@shared/routes";
+import { z } from "zod";
+import { insertQuestionSchema, questions } from "./schema";
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
-  
-  // Seed database on startup
-  await storage.seedQuestions();
+export const api = {
+  questions: {
+    list: {
+      method: "GET",
+      path: "/api/questions",
+      responses: {
+        200: z.array(z.custom<typeof questions.$inferSelect>()),
+      },
+    },
+    getByChapter: {
+      method: "GET",
+      path: "/api/questions/:chapterId",
+      responses: {
+        200: z.array(z.custom<typeof questions.$inferSelect>()),
+      },
+    },
+  },
+};
 
-  app.get(api.questions.list.path, async (req, res) => {
-    const questions = await storage.getAllQuestions();
-    res.json(questions);
-  });
-
-  app.get(api.questions.getByChapter.path, async (req, res) => {
-    const chapterId = parseInt(req.params.chapterId);
-    const questions = await storage.getQuestionsByChapter(chapterId);
-    res.json(questions);
-  });
-
-  return httpServer;
+export function buildUrl(path: string, params?: Record<string, string | number>): string {
+  let url = path;
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (url.includes(`:${key}`)) {
+        url = url.replace(`:${key}`, String(value));
+      }
+    });
+  }
+  return url;
 }
